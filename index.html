@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>座席抽選</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3ecdd; --paper2:#e9dfca; --ink:#2b2622; --sub:#7a6e62; --line:#cfc3ac;
+    --shu:#c0392b; --shu-d:#8e2a1f; --wood:#b98a57; --wood-d:#8f6538; --kin:#b8912f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--ink);background:var(--paper);
+    font-family:"Zen Maru Gothic",sans-serif;
+    background-image:radial-gradient(#00000008 1px,transparent 1px);background-size:4px 4px;}
+  header{text-align:center;padding:26px 12px 10px;border-bottom:3px double var(--ink);max-width:1200px;margin:0 auto}
+  .year{font-size:14px;letter-spacing:.3em;color:var(--sub)}
+  h1{margin:4px 0 0;font-family:"Yuji Syuku",serif;font-weight:400;font-size:clamp(32px,5vw,54px);letter-spacing:.12em}
+  h1 .shu{color:var(--shu)}
+  .tag{color:var(--sub);font-size:14px;margin-top:4px}
+  main{max-width:1200px;margin:0 auto;padding:18px 16px 60px;display:grid;grid-template-columns:1fr 280px;gap:22px}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  .panel{background:#fffaf0;border:1px solid var(--line);padding:18px;box-shadow:2px 3px 0 var(--paper2)}
+  .control{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;margin-bottom:14px}
+  select,input,textarea{font-family:inherit;font-size:16px;border:1px solid var(--line);border-radius:2px;
+    background:#fffdf8;color:var(--ink);padding:8px 10px}
+  .big-select{font-size:20px;min-width:220px;border:2px solid var(--ink)}
+  button{font-family:inherit;cursor:pointer;border:none;font-weight:700}
+  .go{font-family:"Yuji Syuku",serif;font-weight:400;font-size:24px;padding:10px 32px;color:#fff;
+      background:var(--shu);border:2px solid var(--shu-d);border-radius:2px;letter-spacing:.15em}
+  .go:hover{background:#a93226}
+  .go:active{transform:translateY(2px)}
+  .go:disabled{background:#b9aea0;border-color:#9b9084;cursor:not-allowed}
+  .sub-btn{background:transparent;color:var(--ink);padding:6px 12px;font-size:13px;border:1px solid var(--ink);border-radius:2px}
+  .sub-btn:hover{background:var(--paper2)}
+  .lcd{text-align:center;font-size:clamp(18px,2.6vw,26px);min-height:58px;padding:12px;margin-bottom:18px;
+       border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);font-weight:700}
+  .lcd.win{color:var(--shu)}
+  .map{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+  .table-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .table-name{font-family:"Yuji Syuku",serif;font-size:18px}
+  .row{display:flex;gap:6px}
+  .desk{background:var(--wood);border:2px solid var(--wood-d);height:30px;align-self:stretch;
+        background-image:repeating-linear-gradient(90deg,transparent 0 22px,#00000012 22px 24px)}
+  .seat{width:76px;height:60px;background:#fffdf8;border:1px solid var(--line);position:relative;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        line-height:1.25;text-align:center;padding:2px}
+  .seat .no{font-size:11px;color:var(--sub)}
+  .seat .nm{font-weight:700;font-size:14px;word-break:break-all}
+  .seat.taken{background:var(--paper2)}
+  .seat.boss{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .seat.boss .no{color:#d9cfbf}
+  .seat.boss .kamiza{font-family:"Yuji Syuku",serif;font-size:12px;color:#e8c96a}
+  .seat.flash{background:var(--shu);color:#fff;border-color:var(--shu-d)}
+  .seat.flash .no{color:#fff}
+  .seat.hit::after{content:"決";position:absolute;right:-10px;top:-12px;width:34px;height:34px;border-radius:50%;
+        border:2px solid var(--shu);color:var(--shu);font-family:"Yuji Syuku",serif;font-size:20px;
+        display:flex;align-items:center;justify-content:center;background:#fffaf0e0;
+        transform:rotate(-12deg)}
+  @keyframes stamp{from{transform:scale(2.4) rotate(-12deg);opacity:0}to{transform:scale(1) rotate(-12deg);opacity:1}}
+  .side h2{font-family:"Yuji Syuku",serif;font-weight:400;font-size:22px;margin:0 0 8px;border-bottom:2px solid var(--ink);padding-bottom:4px}
+  .results{list-style:none;margin:0;padding:0;max-height:440px;overflow:auto;font-size:15px}
+  .results li{display:flex;justify-content:space-between;padding:6px 2px;border-bottom:1px dotted var(--line)}
+  .results li b{font-weight:700}
+  .waiting{color:var(--sub);font-size:13px;margin-top:12px}
+  .side-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .secret-dot{position:fixed;right:8px;bottom:8px;width:14px;height:14px;border-radius:50%;background:#00000010;cursor:pointer}
+  .modal-bg{position:fixed;inset:0;background:#2b262299;display:none;align-items:flex-start;justify-content:center;
+            overflow:auto;padding:30px 12px;z-index:10}
+  .modal-bg.open{display:flex}
+  .modal{background:#fffaf0;border:2px solid var(--ink);max-width:760px;width:100%;padding:22px}
+  .modal h2{margin:0 0 4px;font-family:"Yuji Syuku",serif;font-weight:400;color:var(--shu);font-size:26px}
+  .modal .note{color:var(--sub);font-size:13px;margin-bottom:14px}
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-weight:700;margin-bottom:4px;font-size:14px}
+  .fld .hint{font-size:12px;color:var(--sub);margin-top:3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  textarea{width:100%;min-height:150px}
+  .rig-table{width:100%;border-collapse:collapse;font-size:14px}
+  .rig-table td{padding:5px;border-bottom:1px solid var(--line)}
+  .rig-table select{width:100%;font-size:14px;padding:5px}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .primary{background:var(--shu);color:#fff;padding:9px 20px;font-size:15px;border-radius:2px}
+  .confetti{position:fixed;top:-20px;width:8px;height:12px;z-index:5;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+  /* ---- スマホ向け ---- */
+  @media(max-width:600px){
+    header{padding:16px 10px 8px}
+    main{padding:12px 8px 40px;gap:14px}
+    .panel{padding:12px 10px}
+    .control{gap:8px}
+    .big-select{font-size:17px;min-width:0;flex:1 1 160px}
+    .go{font-size:20px;padding:9px 18px}
+    .lcd{font-size:17px;min-height:48px;padding:10px 4px}
+    .map{gap:18px}
+    .table-wrap{width:100%}
+    .row{gap:4px;width:100%}
+    .seat{flex:1 1 0;min-width:0;width:auto;height:54px}
+    .seat .no{font-size:10px}
+    .seat .nm{font-size:12px}
+    .seat.hit::after{width:26px;height:26px;font-size:15px;right:-6px;top:-9px}
+    .grid2{grid-template-columns:1fr}
+    .modal{padding:16px}
+    .secret-dot{width:22px;height:22px;right:4px;bottom:4px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="year">令和八年　忘年会</div>
+  <h1>座席抽選</h1>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="control">
+      <select id="who" class="big-select"></select>
+      <button id="go" class="go">抽選する</button>
+    </div>
+    <div id="lcd" class="lcd">参加者を選んでボタンを押してください</div>
+    <div id="map" class="map"></div>
+  </section>
+
+  <aside class="panel side">
+    <h2>抽選結果</h2>
+    <ul id="results" class="results"></ul>
+    <div id="waiting" class="waiting"></div>
+    <div class="side-btns">
+      <button class="sub-btn" id="undo">1つ戻す</button>
+      <button class="sub-btn" id="reset">結果をリセット</button>
+    </div>
+  </aside>
+</main>
+
+<div class="secret-dot" id="secretDot" title=""></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>仕込み設定</h2>
+    <div class="note">この画面は参加者に見せないでください。右下の小さな丸、または Ctrl+Shift+S で開きます。</div>
+
+    <div class="grid2">
+      <div class="fld"><label>テーブル数</label><input type="number" id="cfgTables" min="1" max="10"></div>
+      <div class="fld"><label>1テーブルの席数</label><input type="number" id="cfgSeats" min="2" max="16" step="2">
+        <div class="hint">偶数（両側に半分ずつ）</div></div>
+      <div class="fld"><label>偉い人の名前</label><input type="text" id="cfgBoss"></div>
+    </div>
+    <div class="fld"><label>偉い人の席</label><select id="cfgBossSeat"></select></div>
+    <div class="fld"><label>参加者（1行に1人・偉い人は除く）</label><textarea id="cfgPeople"></textarea></div>
+    <div class="fld">
+      <label>席の仕込み</label>
+      <div class="hint" style="margin-bottom:6px">「おまかせ」の人は空いている席からランダムに決まります。★は偉い人の近くの席です。</div>
+      <table class="rig-table" id="rigTable"></table>
+    </div>
+    <div class="modal-foot">
+      <button class="sub-btn" id="cfgClose">閉じる</button>
+      <button class="primary" id="cfgSave">保存して反映</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORE_KEY = "bonenkai-seat-v1";
+  const defaults = {
+    tables: 3, seats: 8, boss: "坂場さん", bossSeat: "A-1",
+    people: ["山田","佐藤","鈴木","高橋","田中","伊藤","渡辺","中村","小林","加藤","吉田","山本","村山"],
+    rigs: {}  // name -> seatId
+  };
+  let cfg = load() || structuredClone(defaults);
+  let results = []; // {name, seat}
+
+  function load(){ try{ const s = localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+  function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(cfg)); }catch(e){} }
+
+  // ---- seats ----
+  const tableLetter = i => String.fromCharCode(65 + i);
+  function allSeats(){
+    const list = [];
+    for(let t=0;t<cfg.tables;t++) for(let s=1;s<=cfg.seats;s++) list.push(tableLetter(t)+"-"+s);
+    return list;
+  }
+  // 近い席：同じテーブルの隣・向かい・斜め向かい
+  function nearSeats(id){
+    const [t, nStr] = id.split("-"); const n = +nStr; const half = cfg.seats/2;
+    const top = n <= half; const col = top ? n : n - half;
+    const res = [];
+    for(const dc of [-1,0,1]){
+      const c = col + dc; if(c<1||c>half) continue;
+      if(dc!==0) res.push(t+"-"+(top? c : c+half));     // 同じ側の隣
+      res.push(t+"-"+(top? c+half : c));                // 向かい側
+    }
+    return res;
+  }
+  const isNearBoss = id => nearSeats(cfg.bossSeat).includes(id);
+
+  // ---- draw map ----
+  const $ = id => document.getElementById(id);
+  function seatEl(id){ return document.querySelector(`.seat[data-id="${id}"]`); }
+  function renderMap(){
+    const map = $("map"); map.innerHTML = "";
+    const half = cfg.seats/2;
+    for(let t=0;t<cfg.tables;t++){
+      const L = tableLetter(t);
+      const wrap = document.createElement("div"); wrap.className = "table-wrap";
+      wrap.innerHTML = `<div class="table-name">テーブル ${L}</div>`;
+      const mkRow = (from) => {
+        const r = document.createElement("div"); r.className = "row";
+        for(let c=1;c<=half;c++){
+          const id = L+"-"+(from+c);
+          const d = document.createElement("div"); d.className="seat"; d.dataset.id=id;
+          r.appendChild(d);
+        }
+        return r;
+      };
+      wrap.appendChild(mkRow(0));
+      const desk = document.createElement("div"); desk.className="desk"; 
+      wrap.appendChild(desk);
+      wrap.appendChild(mkRow(half));
+      map.appendChild(wrap);
+    }
+    paintSeats();
+  }
+  function paintSeats(){
+    document.querySelectorAll(".seat").forEach(el=>{
+      const id = el.dataset.id;
+      el.className = "seat";
+      const r = results.find(x=>x.seat===id);
+      let nm = "";
+      if(id===cfg.bossSeat){ el.classList.add("boss"); nm = cfg.boss; }
+      else if(r){ el.classList.add("taken"); nm = r.name; }
+      el.innerHTML = (id===cfg.bossSeat ? `<span class="kamiza">上座</span>` : `<span class="no">${id}</span>`) + `<span class="nm">${esc(nm)}</span>`;
+    });
+  }
+  const esc = s => s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  // ---- side ----
+  function renderSide(){
+    const ul = $("results"); ul.innerHTML = "";
+    results.forEach(r=>{
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${esc(r.name)}</span><b>${r.seat}</b>`;
+      ul.appendChild(li);
+    });
+    const left = cfg.people.filter(p=>!results.some(r=>r.name===p));
+    $("waiting").textContent = left.length ? `未抽選：${left.length}人` : "全員の座席が決まりました！";
+    const sel = $("who"); const prev = sel.value; sel.innerHTML = "";
+    left.forEach(p=>{ const o=document.createElement("option"); o.value=p; o.textContent=p+" さん"; sel.appendChild(o); });
+    if(left.includes(prev)) sel.value = prev;
+    $("go").disabled = !left.length;
+  }
+
+  // ---- decide target (the secret part) ----
+  function freeSeats(){
+    const used = new Set(results.map(r=>r.seat)); used.add(cfg.bossSeat);
+    return allSeats().filter(s=>!used.has(s));
+  }
+  function decideSeat(name){
+    const free = freeSeats();
+    const rig = cfg.rigs[name];
+    if(rig && free.includes(rig)) return rig;
+    // 他の人に仕込まれた席は避ける
+    const reserved = new Set(Object.entries(cfg.rigs)
+      .filter(([n,s])=>s && n!==name && !results.some(r=>r.name===n)).map(([,s])=>s));
+    const pool = free.filter(s=>!reserved.has(s));
+    const list = pool.length ? pool : free;
+    return list[Math.floor(Math.random()*list.length)];
+  }
+
+  // ---- sound ----
+  let ac = null;
+  function beep(freq, dur=0.05, type="square", vol=0.08){
+    try{
+      ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime; o.start(t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur); o.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  function fanfare(){
+    [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.18,"square",0.09), i*120));
+    setTimeout(()=>beep(1047,0.5,"triangle",0.1), 520);
+  }
+
+  // ---- roulette ----
+  let running = false;
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+  async function run(){
+    if(running) return;
+    const name = $("who").value; if(!name) return;
+    running = true; $("go").disabled = true; $("who").disabled = true;
+    const lcd = $("lcd"); lcd.classList.remove("win");
+    const target = decideSeat(name);
+    const free = freeSeats();
+    const steps = 26 + Math.floor(Math.random()*5);
+    let last = null;
+    lcd.textContent = `${name}さんの席を抽選中…`;
+    for(let i=0;i<steps;i++){
+      let s;
+      if(i===steps-1) s = target;
+      else { do{ s = free[Math.floor(Math.random()*free.length)]; }while(free.length>2 && (s===last || (i===steps-2 && s===target))); }
+      if(last) seatEl(last)?.classList.remove("flash");
+      seatEl(s)?.classList.add("flash"); last = s;
+      beep(i===steps-1 ? 1200 : 700 + (i%2)*300, 0.05);
+      const p = i/steps;
+      await sleep(40 + Math.pow(p,3)*270);
+    }
+    await sleep(250);
+    seatEl(target)?.classList.remove("flash");
+    results.push({name, seat:target});
+    paintSeats();
+    const el = seatEl(target); el.classList.add("hit");
+    beep(880,0.15,"triangle",0.08);
+    lcd.classList.add("win");
+    lcd.textContent = `${name}さん、${target}に決定。`;
+    renderSide();
+    setTimeout(()=>el.classList.remove("hit"), 2000);
+    running = false; $("who").disabled = false;
+  }
+
+  function confetti(n){
+    const colors = ["#c0392b","#2b2622","#b8912f","#f3ecdd"];
+    for(let i=0;i<n;i++){
+      const c = document.createElement("div"); c.className="confetti";
+      c.style.left = Math.random()*100+"vw";
+      c.style.background = colors[i%colors.length];
+      c.style.animationDuration = (1.8+Math.random()*1.8)+"s";
+      c.style.animationDelay = (Math.random()*0.4)+"s";
+      document.body.appendChild(c); setTimeout(()=>c.remove(), 4500);
+    }
+  }
+
+  // ---- settings ----
+  function openCfg(){
+    $("cfgTables").value = cfg.tables; $("cfgSeats").value = cfg.seats;
+    $("cfgBoss").value = cfg.boss; $("cfgPeople").value = cfg.people.join("\n");
+    fillBossSeat(); fillRigs(); $("modalBg").classList.add("open");
+  }
+  function tempCfg(){
+    let seats = Math.max(2, Math.min(16, +$("cfgSeats").value||8)); if(seats%2) seats++;
+    return { tables: Math.max(1, Math.min(10, +$("cfgTables").value||1)), seats };
+  }
+  function fillBossSeat(){
+    const {tables, seats} = tempCfg(); const keep = $("cfgBossSeat").value || cfg.bossSeat;
+    const sel = $("cfgBossSeat"); sel.innerHTML = "";
+    for(let t=0;t<tables;t++) for(let s=1;s<=seats;s++){
+      const id = tableLetter(t)+"-"+s; const o=document.createElement("option"); o.value=o.textContent=id; sel.appendChild(o);
+    }
+    sel.value = [...sel.options].some(o=>o.value===keep) ? keep : "A-1";
+  }
+  function fillRigs(){
+    const {tables, seats} = tempCfg();
+    const saved = {...cfg}; cfg.tables=tables; cfg.seats=seats; cfg.bossSeat=$("cfgBossSeat").value;
+    const ids = allSeats().filter(s=>s!==cfg.bossSeat);
+    const near = new Set(nearSeats(cfg.bossSeat));
+    // 現在のプルダウン値を優先して保持
+    const current = {};
+    document.querySelectorAll("#rigTable select").forEach(s=>current[s.dataset.name]=s.value);
+    const people = $("cfgPeople").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    const tb = $("rigTable"); tb.innerHTML = "";
+    people.forEach(p=>{
+      const val = (p in current) ? current[p] : (saved.rigs[p]||"");
+      const tr = document.createElement("tr");
+      const opts = [`<option value="">おまかせ（ランダム）</option>`]
+        .concat(ids.map(id=>`<option value="${id}">${id}${near.has(id)?" ★上座の近く":""}</option>`)).join("");
+      tr.innerHTML = `<td style="width:40%">${esc(p)}</td><td><select data-name="${esc(p)}">${opts}</select></td>`;
+      tb.appendChild(tr);
+      const s = tr.querySelector("select"); s.value = ids.includes(val) ? val : "";
+    });
+    cfg.tables=saved.tables; cfg.seats=saved.seats; cfg.bossSeat=saved.bossSeat;
+  }
+  function saveCfg(){
+    const {tables, seats} = tempCfg();
+    const rigs = {}; const used = new Set(); const dup = [];
+    document.querySelectorAll("#rigTable select").forEach(s=>{
+      if(!s.value) return;
+      if(used.has(s.value)) dup.push(s.value); used.add(s.value); rigs[s.dataset.name]=s.value;
+    });
+    if(dup.length){ $("cfgSave").textContent = `同じ席が重複：${dup.join(", ")}`; setTimeout(()=>$("cfgSave").textContent="保存して反映",2000); return; }
+    cfg = { tables, seats, boss: $("cfgBoss").value.trim()||"偉い人", bossSeat: $("cfgBossSeat").value,
+            people: $("cfgPeople").value.split("\n").map(s=>s.trim()).filter(Boolean), rigs };
+    const cap = tables*seats - 1;
+    results = results.filter(r=>cfg.people.includes(r.name) && allSeats().includes(r.seat) && r.seat!==cfg.bossSeat);
+    save(); renderMap(); renderSide();
+    $("lcd").classList.remove("win");
+    $("lcd").textContent = cfg.people.length > cap ? `⚠ 席が足りません（参加者${cfg.people.length}人／空き席${cap}席）` : "参加者を選んでボタンを押してください";
+    $("modalBg").classList.remove("open");
+  }
+
+  // ---- events ----
+  $("go").onclick = run;
+  $("undo").onclick = ()=>{ if(running) return; results.pop(); paintSeats(); renderSide(); };
+  $("reset").onclick = ()=>{
+    if(running) return;
+    const b = $("reset");
+    if(b.dataset.armed){ results=[]; paintSeats(); renderSide(); b.textContent="結果をリセット"; delete b.dataset.armed; }
+    else { b.dataset.armed="1"; b.textContent="もう一度押すとリセット"; setTimeout(()=>{b.textContent="結果をリセット";delete b.dataset.armed;},2500); }
+  };
+  $("secretDot").onclick = openCfg;
+  document.addEventListener("keydown", e=>{ if(e.ctrlKey && e.shiftKey && (e.key==="S"||e.key==="s")){ e.preventDefault(); openCfg(); } });
+  $("cfgClose").onclick = ()=>$("modalBg").classList.remove("open");
+  $("cfgSave").onclick = saveCfg;
+  ["cfgTables","cfgSeats"].forEach(id=>$(id).addEventListener("change", ()=>{ fillBossSeat(); fillRigs(); }));
+  $("cfgBossSeat").addEventListener("change", fillRigs);
+  $("cfgPeople").addEventListener("blur", fillRigs);
+
+  renderMap(); renderSide();
+})();
+</script>
+</body>
+</html>
