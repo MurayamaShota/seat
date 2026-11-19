@@ -225,7 +225,12 @@
     if(local && local.rigs) for(const n in local.rigs) if(base.people.includes(n)) rigs[n] = local.rigs[n];
     return Object.assign(base, { rigs, presetKey: PRESET_KEY });
   })();
-  let results = []; // {name, seat}
+  // 抽選結果は端末に保存し、ページを更新しても残す（「結果をリセット」で消える）
+  const RESULT_KEY = "bonenkai-seat-results-v1";
+  function saveResults(){ try{ localStorage.setItem(RESULT_KEY, JSON.stringify(results)); }catch(e){} }
+  let results = (() => {
+    try{ const r = JSON.parse(localStorage.getItem(RESULT_KEY) || "[]"); return Array.isArray(r) ? r : []; }catch(e){ return []; }
+  })(); // {name, seat}
 
   function load(){ try{ const s = localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
   function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(cfg)); }catch(e){} }
@@ -366,7 +371,7 @@
     }
     await sleep(250);
     if(seatEl(target)) seatEl(target).classList.remove("flash");
-    results.push({name, seat:target});
+    results.push({name, seat:target}); saveResults();
     paintSeats();
     const el = seatEl(target); el.classList.add("hit");
     beep(880,0.15,"triangle",0.08);
@@ -440,6 +445,7 @@
             people: $("cfgPeople").value.split("\n").map(s=>s.trim()).filter(Boolean), rigs, presetKey: PRESET_KEY };
     const cap = tables*seats - 1;
     results = results.filter(r=>cfg.people.includes(r.name) && allSeats().includes(r.seat) && r.seat!==cfg.bossSeat);
+    saveResults();
     save(); renderMap(); renderSide();
     $("lcd").classList.remove("win");
     $("lcd").textContent = cfg.people.length > cap ? `⚠ 席が足りません（参加者${cfg.people.length}人／空き席${cap}席）` : "参加者を選んでボタンを押してください";
@@ -473,11 +479,11 @@
 
   // ---- events ----
   $("go").onclick = run;
-  $("undo").onclick = ()=>{ if(running) return; results.pop(); paintSeats(); renderSide(); };
+  $("undo").onclick = ()=>{ if(running) return; results.pop(); saveResults(); paintSeats(); renderSide(); };
   $("reset").onclick = ()=>{
     if(running) return;
     const b = $("reset");
-    if(b.dataset.armed){ results=[]; paintSeats(); renderSide(); b.textContent="結果をリセット"; delete b.dataset.armed; }
+    if(b.dataset.armed){ results=[]; saveResults(); paintSeats(); renderSide(); b.textContent="結果をリセット"; delete b.dataset.armed; }
     else { b.dataset.armed="1"; b.textContent="もう一度押すとリセット"; setTimeout(()=>{b.textContent="結果をリセット";delete b.dataset.armed;},2500); }
   };
   $("secretDot").onclick = openCfg;
@@ -489,6 +495,8 @@
   $("cfgBossSeat").addEventListener("change", fillRigs);
   $("cfgPeople").addEventListener("blur", fillRigs);
 
+  results = results.filter(r=>r && cfg.people.includes(r.name) && allSeats().includes(r.seat) && r.seat!==cfg.bossSeat);
+  saveResults();
   renderMap(); renderSide();
 })();
 </script>
