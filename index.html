@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
+<html lang="ja"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>座席抽選</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&amp;family=Zen+Maru+Gothic:wght@400;700&amp;display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#f3ecdd; --paper2:#e9dfca; --ink:#2b2622; --sub:#7a6e62; --line:#cfc3ac;
@@ -154,6 +153,12 @@
       <div class="hint" style="margin-bottom:6px">「おまかせ」の人は空いている席からランダムに決まります。★は偉い人の近くの席です。</div>
       <table class="rig-table" id="rigTable"></table>
     </div>
+    <div class="fld export">
+      <label>共通設定の書き出し（パソコン用）</label>
+      <div class="hint" style="margin-bottom:6px">「保存して反映」のあとに押すと、テーブル数・席数・偉い人の名前と席・参加者を書き込んだ index.html を保存します。仕込みは書き込まれません。</div>
+      <button class="sub-btn" id="cfgExport">共通設定入りのファイルを保存</button>
+      <span id="exportMsg" class="hint" style="margin-left:8px"></span>
+    </div>
     <div class="modal-foot">
       <button class="sub-btn" id="cfgClose">閉じる</button>
       <button class="primary" id="cfgSave">保存して反映</button>
@@ -164,12 +169,62 @@
 <script>
 (() => {
   const STORE_KEY = "bonenkai-seat-v1";
-  const defaults = {
-    tables: 3, seats: 8, boss: "坂場さん", bossSeat: "A-1",
-    people: ["山田","佐藤","鈴木","高橋","田中","伊藤","渡辺","中村","小林","加藤","吉田","山本","村山"],
-    rigs: {}  // name -> seatId
+  // ===== 共通設定（全員に反映される部分）。「共通設定入りのファイルを保存」で自動で書き換わります =====
+  /*PRESET_START*/
+  const PRESET = {
+    "tables": 5,
+    "seats": 8,
+    "boss": "坂場さん",
+    "bossSeat": "A-1",
+    "people": [
+      "竹上",
+      "笠原",
+      "高須",
+      "岡崎",
+      "清水",
+      "曽野",
+      "八木",
+      "本間",
+      "松井",
+      "長谷川",
+      "永塚",
+      "松本",
+      "佐藤　充",
+      "菅谷",
+      "関谷",
+      "深谷",
+      "相原",
+      "チョン",
+      "榎戸",
+      "高橋",
+      "二川",
+      "中野",
+      "佐藤（イビデン）",
+      "大金",
+      "野口",
+      "小野",
+      "石井",
+      "村山",
+      "川上",
+      "吉野",
+      "金沢",
+      "小島",
+      "佐藤",
+      "浅野"
+    ]
   };
-  let cfg = load() || structuredClone(defaults);
+  /*PRESET_END*/
+  // ===============================================================================================
+  const PRESET_KEY = JSON.stringify(PRESET);
+  // 端末に保存された設定は、共通設定が変わっていなければ使う。変わっていたら共通設定を使い、仕込みだけ引き継ぐ
+  let cfg = (() => {
+    const local = load();
+    if(local && local.presetKey === PRESET_KEY) return local;
+    const base = JSON.parse(PRESET_KEY);
+    const rigs = {};
+    if(local && local.rigs) for(const n in local.rigs) if(base.people.includes(n)) rigs[n] = local.rigs[n];
+    return Object.assign(base, { rigs, presetKey: PRESET_KEY });
+  })();
   let results = []; // {name, seat}
 
   function load(){ try{ const s = localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
@@ -303,14 +358,14 @@
       let s;
       if(i===steps-1) s = target;
       else { do{ s = free[Math.floor(Math.random()*free.length)]; }while(free.length>2 && (s===last || (i===steps-2 && s===target))); }
-      if(last) seatEl(last)?.classList.remove("flash");
-      seatEl(s)?.classList.add("flash"); last = s;
+      if(last && seatEl(last)) seatEl(last).classList.remove("flash");
+      if(seatEl(s)) seatEl(s).classList.add("flash"); last = s;
       beep(i===steps-1 ? 1200 : 700 + (i%2)*300, 0.05);
       const p = i/steps;
       await sleep(40 + Math.pow(p,3)*270);
     }
     await sleep(250);
-    seatEl(target)?.classList.remove("flash");
+    if(seatEl(target)) seatEl(target).classList.remove("flash");
     results.push({name, seat:target});
     paintSeats();
     const el = seatEl(target); el.classList.add("hit");
@@ -382,13 +437,38 @@
     });
     if(dup.length){ $("cfgSave").textContent = `同じ席が重複：${dup.join(", ")}`; setTimeout(()=>$("cfgSave").textContent="保存して反映",2000); return; }
     cfg = { tables, seats, boss: $("cfgBoss").value.trim()||"偉い人", bossSeat: $("cfgBossSeat").value,
-            people: $("cfgPeople").value.split("\n").map(s=>s.trim()).filter(Boolean), rigs };
+            people: $("cfgPeople").value.split("\n").map(s=>s.trim()).filter(Boolean), rigs, presetKey: PRESET_KEY };
     const cap = tables*seats - 1;
     results = results.filter(r=>cfg.people.includes(r.name) && allSeats().includes(r.seat) && r.seat!==cfg.bossSeat);
     save(); renderMap(); renderSide();
     $("lcd").classList.remove("win");
     $("lcd").textContent = cfg.people.length > cap ? `⚠ 席が足りません（参加者${cfg.people.length}人／空き席${cap}席）` : "参加者を選んでボタンを押してください";
     $("modalBg").classList.remove("open");
+  }
+
+  // ---- export ----
+  function exportHtml(){
+    const shared = { tables: cfg.tables, seats: cfg.seats, boss: cfg.boss, bossSeat: cfg.bossSeat, people: cfg.people };
+    const block = "/*PRESET_START*/\n  const PRESET = " + JSON.stringify(shared, null, 2).replace(/\n/g, "\n  ") + ";\n  /*PRESET_END*/";
+    const doc = document.documentElement.cloneNode(true);
+    ["map","results","who","rigTable","cfgBossSeat"].forEach(id=>{ const el = doc.querySelector("#"+id); if(el) el.innerHTML = ""; });
+    doc.querySelector("#waiting").textContent = "";
+    doc.querySelector("#lcd").textContent = "参加者を選んでボタンを押してください";
+    doc.querySelector("#lcd").className = "lcd";
+    doc.querySelector("#exportMsg").textContent = "";
+    doc.querySelector("#modalBg").className = "modal-bg";
+    doc.querySelectorAll(".confetti").forEach(c=>c.remove());
+    doc.querySelectorAll("button[disabled],select[disabled]").forEach(b=>b.removeAttribute("disabled"));
+    const sc = [...doc.querySelectorAll("script")].find(x=>x.textContent.includes("PRESET_START"));
+    sc.textContent = sc.textContent.replace(/\/\*PRESET_START\*\/[\s\S]*?\/\*PRESET_END\*\//, block);
+    const html = "<!DOCTYPE html>\n" + doc.outerHTML;
+    try{
+      const url = URL.createObjectURL(new Blob([html], {type:"text/html"}));
+      const a = document.createElement("a"); a.href = url; a.download = "index.html";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      $("exportMsg").textContent = "index.html を保存しました";
+    }catch(e){ $("exportMsg").textContent = "保存できませんでした（パソコンのブラウザで開いてください）"; }
   }
 
   // ---- events ----
@@ -404,6 +484,7 @@
   document.addEventListener("keydown", e=>{ if(e.ctrlKey && e.shiftKey && (e.key==="S"||e.key==="s")){ e.preventDefault(); openCfg(); } });
   $("cfgClose").onclick = ()=>$("modalBg").classList.remove("open");
   $("cfgSave").onclick = saveCfg;
+  $("cfgExport").onclick = exportHtml;
   ["cfgTables","cfgSeats"].forEach(id=>$(id).addEventListener("change", ()=>{ fillBossSeat(); fillRigs(); }));
   $("cfgBossSeat").addEventListener("change", fillRigs);
   $("cfgPeople").addEventListener("blur", fillRigs);
@@ -411,5 +492,6 @@
   renderMap(); renderSide();
 })();
 </script>
-</body>
-</html>
+
+
+</body></html>
